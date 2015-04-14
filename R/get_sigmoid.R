@@ -1,0 +1,83 @@
+get_sigmoid = function(eset, platform = "ILM", replicate = "1", lane = "L01", flowcell = "FlowCellA", center = "AGR", newdev = TRUE) {
+    x = seq(-10,10, 0.01)
+    y = sapply(x, function(x) log2((.75*2^x + .25)/(.25*2^x + .75)))
+    samples = which(pData(eset)$platform == platform & pData(eset)$replicate == replicate & 
+        pData(eset)$lane == lane & pData(eset)$flowcell == flowcell & pData(eset)$center == center)
+    eset_subset = eset[,samples]
+    A = exprs(eset_subset)[,which(pData(eset_subset)$sample == "A")]
+    B = exprs(eset_subset)[,which(pData(eset_subset)$sample == "B")]
+    C = exprs(eset_subset)[,which(pData(eset_subset)$sample == "C")]
+    D = exprs(eset_subset)[,which(pData(eset_subset)$sample == "D")]
+    theta = log2(A/B)
+    gamma = log2(C/D)
+    theta_nonInf = theta[-which(theta == Inf | theta == -Inf)]
+    gamma_nonInf = gamma[-which(gamma == Inf | gamma == -Inf)]
+    oksamp = intersect(names(theta_nonInf), names(gamma_nonInf))
+    theta_nonInf = theta_nonInf[oksamp]
+    gamma_nonInf = gamma_nonInf[oksamp]
+    eps = 1e-2
+    a = sort(theta_nonInf)[1:20]
+    b = sort(theta_nonInf, decreasing = TRUE)[1:20]
+    aa = gamma_nonInf[names(a)]
+    bb = gamma_nonInf[names(b)]
+    Asym = abs(mean(aa)) + abs(mean(bb))
+    xmid = (summary(theta_nonInf)["Median"] + summary(theta_nonInf)["Mean"]) / 2
+    get_scale = which(gamma_nonInf > Asym/4 - eps & gamma_nonInf < Asym/4 + eps)
+    scale = mean(abs(theta_nonInf[get_scale]))
+    sigmoid = SSlogis(theta_nonInf, Asym, xmid, scale)
+    if(newdev) dev.new()
+    plot(theta_nonInf, gamma_nonInf, xlab = "log2(A/B)", ylab = "log2(C/D)", xlim = c(-12,12), ylim = c(-4,4))
+    points(theta_nonInf, sigmoid - Asym/2, col = "orange")
+    lines(x, y, col = "green") 
+}
+
+getEset = function(platform = "ILM", replicate = "1", lane = "L01", flowcell = "FlowCellA", center = "AGR",
+     feature="gene", catalog="refseq") {
+  ans = seqc.eSet(feature, catalog, platform)
+  ans[, which(ans$replicate == replicate & ans$lane == lane & ans$flowcell == flowcell & ans$center == center)]
+}
+
+getRatios = function(eset, fudge=0) {
+    A = exprs(eset)[,which(pData(eset)$sample == "A")]+fudge
+    B = exprs(eset)[,which(pData(eset)$sample == "B")]+fudge
+    C = exprs(eset)[,which(pData(eset)$sample == "C")]+fudge
+    D = exprs(eset)[,which(pData(eset)$sample == "D")]+fudge
+    fData(eset) = cbind(fData(eset), AoB=A/B , CoD=C/D)
+    eset
+}
+
+gtplot = function(eset, fudge=0) {
+    eset = getRatios(eset, fudge)
+    with(fData(eset), plot( log2(AoB), log2(CoD) ) )
+}
+
+getInit = function(eset, fudge=1, span=.2, xmid=0, shift=5) {
+    eset = getRatios(eset, fudge)
+    fData(eset)$CoD = fData(eset)$CoD+shift
+    abinfs = which(!is.finite(fData(eset)$AoB))
+    cdinfs = which(!is.finite(fData(eset)$CoD))
+    if (any(!is.finite(fData(eset)$AoB))) warning("some non-finite A/B")
+    if (any(!is.finite(fData(eset)$CoD))) warning("some non-finite C/D")
+    infs = union(abinfs, cdinfs)
+    if (length(infs) > 0) eset = eset[-infs,]
+    f1 = loess( log2(CoD)~log2(AoB), data=fData(eset), span=span ) #guess at vertical extent
+    Asym = max(predict(f1))-min(predict(f1))
+#    invpred = with( fData(eset), approxfun( log2(AoB), predict(f1) )  )
+    gamma = log2(fData(eset)$CoD)
+    theta = log2(fData(eset)$AoB)
+    get_scale = which(gamma > (3*Asym/4 - .01) & gamma < (3*Asym/4 + .01) )
+    scale = mean(abs(theta[get_scale]))
+    list(eset=eset, xmid=xmid, Asym=Asym, scale=scale)
+}
+  
+doNLS = function(eset, fudge=1, span=.2, xmid=0) {
+    st = getInit(eset, fudge, span, xmid)
+    Asym = st$Asym
+    xmid = st$xmid
+    scale = st$scale
+    nls( log2(CoD)~
+           SSlogis( log2(AoB), Asym, xmid, scale ), data=fData(st[[1]]) )
+}
+
+trueSigmoid = function(x)  
+     log2((.75*2^x + .25)/(.25*2^x + .75))
