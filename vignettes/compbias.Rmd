@@ -1,0 +1,78 @@
+---
+title: "rsbiascomp: RNA-seq bias correction and preprocessing comparisons"
+author: "Vincent J. Carey, stvjc at channing.harvard.edu"
+date: "November 2014"
+output:
+  pdf_document:
+    toc: yes
+    number_sections: yes
+  html_document:
+    highlight: pygments
+    number_sections: yes
+    theme: united 
+    toc: yes
+---
+<!--
+%\VignetteEngine{knitr::rmarkdown}
+%\VignetteIndexEntry{rsbiascomp}
+--> 
+
+# Introduction
+
+We are developing software to help compare different approaches to
+preprocessing and enhancing the information in RNA-seq experiments.
+
+
+# Basic Motivating Illustration
+
+## Gene level
+
+```{r in1, fig=TRUE}
+library(Biobase)
+library(seqc)
+s1 = seqc.eSet("gene", "refseq", "ILM")
+boxplot(exprs(s1)[100,]~s1$center)
+```
+
+## Genome-wide
+
+sigmoid model  -- plot the theoretical function
+
+$$\gamma = \log_2\left(\frac{0.75A + 0.25B}{0.25A + 0.75B}\right)
+    = \log_2\left(\frac{0.75 \frac{A}{B} + 0.25}{0.25 \frac{A}{B} + 0.75}\right)
+    = \log_2\left(\frac{0.75 2^\theta + 0.25}{0.25 2^\theta + 0.75}\right)$$
+
+plot data for arbitrary selection of A,B,C,D -- demonstrate acquisition and
+plotting of ratios from two different centers -- one would be MAY
+
+```{r in2, fig=TRUE}
+es1 = getEset(center = "AGR")
+es2 = getEset(center = "MAY")
+es1r = getRatios(es1)
+es2r = getRatios(es2)
+with(fData(es1r), smoothScatter(log2(AoB), log2(CoD), cex = 3, xlim = c(-11,11), ylim = c(-5,5)))
+lines(seq(-10,10, 0.1), trueSigmoid(seq(-10,10,0.1)))
+with(fData(es2r), smoothScatter(log2(AoB), log2(CoD), cex = 3, xlim = c(-11,11), ylim = c(-5,5)))
+lines(seq(-10,10, 0.1), trueSigmoid(seq(-10,10,0.1)))
+```
+
+## A scalar figure of merit for RNA-seq quantitation
+
+### genome-wide MAD of residuals
+
+```{r in3}
+res1 = getResiduals(es1)
+res2 = getResiduals(es2)
+mad(res1)
+mad(res2)
+```
+
+### focused: linear part of the titration curve (focus attention on 1.5-fold to 5-fold)
+
+### another way of slicing -- if you consider only genes where the median expression over all is at least 20,
+insist on a lower bound on the MAD of reads over all samples (bound above mad> 10 could filter away lots of genes ...)
+
+```{r in4}
+allm = apply(exprs(s1),1,mad)
+summary(allm)
+```

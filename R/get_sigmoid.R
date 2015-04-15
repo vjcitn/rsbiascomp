@@ -37,7 +37,7 @@ getEset = function(platform = "ILM", replicate = "1", lane = "L01", flowcell = "
   ans[, which(ans$replicate == replicate & ans$lane == lane & ans$flowcell == flowcell & ans$center == center)]
 }
 
-getRatios = function(eset, fudge=0) {
+getRatios = function(eset, fudge=1) {
     A = exprs(eset)[,which(pData(eset)$sample == "A")]+fudge
     B = exprs(eset)[,which(pData(eset)$sample == "B")]+fudge
     C = exprs(eset)[,which(pData(eset)$sample == "C")]+fudge
@@ -46,9 +46,14 @@ getRatios = function(eset, fudge=0) {
     eset
 }
 
-gtplot = function(eset, fudge=0) {
+getResiduals = function(eset, fudge = 1) {
+  esetr = getRatios(eset, fudge = fudge)
+  log2(fData(esetr)$CoD) - trueSigmoid(log2(fData(esetr)$AoB))
+}
+
+gtplot = function(eset, fudge=1, ...) {
     eset = getRatios(eset, fudge)
-    with(fData(eset), plot( log2(AoB), log2(CoD) ) )
+    with(fData(eset), plot( log2(AoB), log2(CoD), ... ) )
 }
 
 getInit = function(eset, fudge=1, span=.2, xmid=0, shift=5) {
