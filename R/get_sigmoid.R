@@ -33,6 +33,7 @@ get_sigmoid = function(eset, platform = "ILM", replicate = "1", lane = "L01", fl
 
 getEset = function(platform = "ILM", replicate = "1", lane = "L01", flowcell = "FlowCellA", center = "AGR",
      feature="gene", catalog="refseq") {
+  require(seqc)
   ans = seqc.eSet(feature, catalog, platform)
   ans[, which(ans$replicate == replicate & ans$lane == lane & ans$flowcell == flowcell & ans$center == center)]
 }
