@@ -5,7 +5,8 @@
 obtain ExpressionSet from SEQC
 }
 \description{
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+tailored the extraction to specify a single replicate but
+all samples from a given configuration of cell, center, lane.
 }
 \usage{
 getEset(platform = "ILM", replicate = "1", lane = "L01", flowcell = "FlowCellA", center = "AGR", feature = "gene", catalog = "refseq")
@@ -13,25 +14,25 @@ getEset(platform = "ILM", replicate = "1", lane = "L01", flowcell = "FlowCellA",
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{platform}{
-%%     ~~Describe \code{platform} here~~
+character string, "ILM" ...
 }
   \item{replicate}{
-%%     ~~Describe \code{replicate} here~~
+character string 1-5 or so
 }
   \item{lane}{
-%%     ~~Describe \code{lane} here~~
+character string ... L01 - L07 are possible options
 }
   \item{flowcell}{
-%%     ~~Describe \code{flowcell} here~~
+FlowCellA or B
 }
   \item{center}{
-%%     ~~Describe \code{center} here~~
+various, see seqc.eSet
 }
   \item{feature}{
-%%     ~~Describe \code{feature} here~~
+gene or junction or taqman
 }
   \item{catalog}{
-%%     ~~Describe \code{catalog} here~~
+string, "refseq" or "aceview"
 }
 }
 \details{
